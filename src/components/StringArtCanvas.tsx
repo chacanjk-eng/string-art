@@ -22,6 +22,12 @@ interface StringArtCanvasProps {
   activeManualThickness: number;
   studentName: string;
   schoolInfo: string;
+  isPlaying: boolean;
+  setIsPlaying: (val: boolean) => void;
+  simulationProgress: number;
+  setSimulationProgress: (val: number | ((prev: number) => number)) => void;
+  simulationSpeed: number;
+  setSimulationSpeed: (val: number) => void;
 }
 
 export default function StringArtCanvas({
@@ -37,7 +43,13 @@ export default function StringArtCanvas({
   activeManualColor,
   activeManualThickness,
   studentName,
-  schoolInfo
+  schoolInfo,
+  isPlaying,
+  setIsPlaying,
+  simulationProgress,
+  setSimulationProgress,
+  simulationSpeed,
+  setSimulationSpeed
 }: StringArtCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -51,10 +63,6 @@ export default function StringArtCanvas({
   const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  // Simulation / Animation state
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [simulationProgress, setSimulationProgress] = useState(0); // 0 to N-1
-  const [simulationSpeed, setSimulationSpeed] = useState<number>(30); // ms per line (10, 30, 100, 300)
   const [exportBg, setExportBg] = useState<'dark' | 'light' | 'navy' | 'black'>('light');
 
   // Sync points when shape or N or divisionLine or dimensions change
@@ -147,59 +155,79 @@ export default function StringArtCanvas({
     }
 
     // Draw shape guide border (faintly)
-    ctx.strokeStyle = isLight ? 'rgba(15, 23, 42, 0.12)' : 'rgba(255, 255, 255, 0.15)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    if (shape === 'circle') {
-      ctx.arc(cx, cy, Math.min(cx, cy) * 0.8, 0, Math.PI * 2);
-    } else {
-      let sides = 3;
-      if (shape === 'square') sides = 4;
-      else if (shape === 'triangle') sides = 3;
-      else if (shape === 'pentagon') sides = 5;
-      else if (shape === 'hexagon') sides = 6;
+    if (shape !== 'none') {
+      ctx.strokeStyle = isLight ? 'rgba(15, 23, 42, 0.12)' : 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (shape === 'circle') {
+        ctx.arc(cx, cy, Math.min(cx, cy) * 0.8, 0, Math.PI * 2);
+      } else {
+        let sides = 3;
+        if (shape === 'square') sides = 4;
+        else if (shape === 'triangle') sides = 3;
+        else if (shape === 'pentagon') sides = 5;
+        else if (shape === 'hexagon') sides = 6;
 
-      for (let i = 0; i <= sides; i++) {
-        const angle = -Math.PI / 2 + (2 * Math.PI * i) / sides;
-        const radius = Math.min(cx, cy) * 0.8;
-        const x = cx + radius * Math.cos(angle);
-        const y = cy + radius * Math.sin(angle);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+        for (let i = 0; i <= sides; i++) {
+          const angle = -Math.PI / 2 + (2 * Math.PI * i) / sides;
+          const radius = Math.min(cx, cy) * 0.8;
+          const x = cx + radius * Math.cos(angle);
+          const y = cy + radius * Math.sin(angle);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
       }
+      ctx.stroke();
+    } else {
+      // Draw welcome watermark if no shape is chosen
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillStyle = isLight ? '#4f46e5' : '#818cf8';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🎨 스트링아트 제작소', cx, cy - 25);
+      
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = isLight ? '#64748b' : '#94a3b8';
+      ctx.fillText('오른쪽 길잡이 단계에 따라 도형을 고르고', cx, cy + 5);
+      ctx.fillText('등분점을 나누어 실 감기 예술을 시작해 보세요!', cx, cy + 25);
     }
-    ctx.stroke();
 
-    // 1. Draw Rule 1 Pattern (Auto Simulation limits lines to simulationProgress if playing)
-    if (rule1.enabled) {
+    // 1. Draw Rule 1 Pattern (Auto Simulation limits lines to simulationProgress if playing) - Only draw if not in manual mode
+    if (rule1.enabled && !isManualMode) {
       const limit = isPlaying ? simulationProgress : N - 1;
       ctx.strokeStyle = rule1.color;
       ctx.lineWidth = rule1.thickness;
       
       for (let i = 0; i <= limit; i++) {
-        const target = evaluateRule(i, N, rule1);
-        if (target !== null && target < points.length && i < points.length) {
-          ctx.beginPath();
-          ctx.moveTo(points[i].x, points[i].y);
-          ctx.lineTo(points[target].x, points[target].y);
-          ctx.stroke();
+        const target1 = evaluateRule(i + 1, N, rule1);
+        if (target1 !== null) {
+          const target = target1 - 1;
+          if (target < points.length && i < points.length) {
+            ctx.beginPath();
+            ctx.moveTo(points[i].x, points[i].y);
+            ctx.lineTo(points[target].x, points[target].y);
+            ctx.stroke();
+          }
         }
       }
     }
 
-    // 2. Draw Rule 2 Pattern (Auto Simulation limits lines to simulationProgress if playing)
-    if (rule2.enabled) {
+    // 2. Draw Rule 2 Pattern (Auto Simulation limits lines to simulationProgress if playing) - Only draw if not in manual mode
+    if (rule2.enabled && !isManualMode) {
       const limit = isPlaying ? simulationProgress : N - 1;
       ctx.strokeStyle = rule2.color;
       ctx.lineWidth = rule2.thickness;
       
       for (let i = 0; i <= limit; i++) {
-        const target = evaluateRule(i, N, rule2);
-        if (target !== null && target < points.length && i < points.length) {
-          ctx.beginPath();
-          ctx.moveTo(points[i].x, points[i].y);
-          ctx.lineTo(points[target].x, points[target].y);
-          ctx.stroke();
+        const target1 = evaluateRule(i + 1, N, rule2);
+        if (target1 !== null) {
+          const target = target1 - 1;
+          if (target < points.length && i < points.length) {
+            ctx.beginPath();
+            ctx.moveTo(points[i].x, points[i].y);
+            ctx.lineTo(points[target].x, points[target].y);
+            ctx.stroke();
+          }
         }
       }
     }
@@ -363,8 +391,8 @@ export default function StringArtCanvas({
         };
         setManualLines((prev) => [...prev, newLine]);
         
-        // Continuous wrapping: make the selected destination point the new starting point!
-        setSelectedPointIndex(hoveredPointIndex);
+        // Reset start point selection so drawing doesn't continuously chain
+        setSelectedPointIndex(null);
       } else {
         // Clicked same point: cancel start point selection
         setSelectedPointIndex(null);
@@ -460,12 +488,15 @@ export default function StringArtCanvas({
       ctx.strokeStyle = rule1.color;
       ctx.lineWidth = rule1.thickness * scale * 0.8;
       for (let i = 0; i < N; i++) {
-        const target = evaluateRule(i, N, rule1);
-        if (target !== null && target < highResPoints.length) {
-          ctx.beginPath();
-          ctx.moveTo(highResPoints[i].x, highResPoints[i].y);
-          ctx.lineTo(highResPoints[target].x, highResPoints[target].y);
-          ctx.stroke();
+        const target1 = evaluateRule(i + 1, N, rule1);
+        if (target1 !== null) {
+          const target = target1 - 1;
+          if (target < highResPoints.length) {
+            ctx.beginPath();
+            ctx.moveTo(highResPoints[i].x, highResPoints[i].y);
+            ctx.lineTo(highResPoints[target].x, highResPoints[target].y);
+            ctx.stroke();
+          }
         }
       }
     }
@@ -474,12 +505,15 @@ export default function StringArtCanvas({
       ctx.strokeStyle = rule2.color;
       ctx.lineWidth = rule2.thickness * scale * 0.8;
       for (let i = 0; i < N; i++) {
-        const target = evaluateRule(i, N, rule2);
-        if (target !== null && target < highResPoints.length) {
-          ctx.beginPath();
-          ctx.moveTo(highResPoints[i].x, highResPoints[i].y);
-          ctx.lineTo(highResPoints[target].x, highResPoints[target].y);
-          ctx.stroke();
+        const target1 = evaluateRule(i + 1, N, rule2);
+        if (target1 !== null) {
+          const target = target1 - 1;
+          if (target < highResPoints.length) {
+            ctx.beginPath();
+            ctx.moveTo(highResPoints[i].x, highResPoints[i].y);
+            ctx.lineTo(highResPoints[target].x, highResPoints[target].y);
+            ctx.stroke();
+          }
         }
       }
     }

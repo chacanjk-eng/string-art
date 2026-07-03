@@ -23,17 +23,17 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  // Tabs: 'lab' (Main Editor), 'gallery' (Board), 'info' (Math Learning guide)
-  const [activeTab, setActiveTab] = useState<'lab' | 'gallery' | 'info'>('lab');
+  // Tabs: 'workshop' (Manual), 'lab' (Rules Lab), 'gallery' (Board), 'info' (Math Learning guide)
+  const [activeTab, setActiveTab] = useState<'workshop' | 'lab' | 'gallery' | 'info'>('workshop');
 
   // Primary State
-  const [shape, setShape] = useState<ShapeType>('circle');
+  const [shape, setShape] = useState<ShapeType>('none');
   const [N, setN] = useState<number>(36);
   const [divisionLine, setDivisionLine] = useState<DivisionLineType>('none');
   
   // Rule 1 Config
   const [rule1, setRule1] = useState<RuleConfig>({
-    enabled: true,
+    enabled: false,
     type: 'multiplication',
     constant: 2,
     power: 2,
@@ -57,11 +57,17 @@ export default function App() {
   const [manualLines, setManualLines] = useState<Line[]>([]);
 
   // Toggles & Helpers
-  const [showNumbers, setShowNumbers] = useState<boolean>(true);
-  const [isManualMode, setIsManualMode] = useState<boolean>(false);
+  const [showNumbers, setShowNumbers] = useState<boolean>(false);
+  const [isManualMode, setIsManualMode] = useState<boolean>(true); // Default to Manual Mode as requested!
+  const [isIntegerOnlyMode, setIsIntegerOnlyMode] = useState<boolean>(true); // Integer-only mode
   const [activeManualColor, setActiveManualColor] = useState<string>('#f43f5e'); // neon rose
   const [activeManualThickness, setActiveManualThickness] = useState<number>(2);
   const [currentStep, setCurrentStep] = useState<number>(0);
+
+  // Simulation / Animation state (lifted up)
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [simulationProgress, setSimulationProgress] = useState<number>(0);
+  const [simulationSpeed, setSimulationSpeed] = useState<number>(30); // ms per line (10, 30, 100, 300)
 
   // Student Profile Persistence
   const [studentName, setStudentName] = useState<string>(() => {
@@ -100,12 +106,12 @@ export default function App() {
     if (template.manualLines && template.manualLines.length > 0) {
       setIsManualMode(true);
       setCurrentStep(3); // Go to manual wrap step
+      setActiveTab('workshop');
     } else {
       setIsManualMode(false);
+      setActiveTab('lab');
     }
 
-    // Toggle back to lab tab and show success
-    setActiveTab('lab');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -137,13 +143,16 @@ export default function App() {
           </div>
 
           {/* Quick Tab Selector */}
-          <nav className="flex bg-slate-100 border border-slate-200 p-1 rounded-2xl w-full sm:w-auto">
+          <nav className="flex flex-wrap bg-slate-100 border border-slate-200 p-1 rounded-2xl w-full sm:w-auto gap-1">
             <button
-              id="tab-lab"
-              onClick={() => setActiveTab('lab')}
+              id="tab-workshop"
+              onClick={() => {
+                setActiveTab('workshop');
+                setIsManualMode(true);
+              }}
               className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-xs font-extrabold transition-all ${
-                activeTab === 'lab' 
-                  ? 'bg-indigo-600 text-white shadow-md' 
+                activeTab === 'workshop' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >
@@ -152,12 +161,28 @@ export default function App() {
             </button>
             
             <button
+              id="tab-lab"
+              onClick={() => {
+                setActiveTab('lab');
+                setIsManualMode(false);
+              }}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-xs font-extrabold transition-all ${
+                activeTab === 'lab' 
+                  ? 'bg-indigo-650 text-white shadow-md' 
+                  : 'text-slate-650 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              <Compass className="w-4 h-4" />
+              <span>📐 수학 규칙 실험실</span>
+            </button>
+
+            <button
               id="tab-gallery"
               onClick={() => setActiveTab('gallery')}
               className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-xs font-extrabold transition-all relative ${
                 activeTab === 'gallery' 
-                  ? 'bg-indigo-600 text-white shadow-md' 
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                  ? 'bg-violet-650 text-white shadow-md' 
+                  : 'text-slate-605 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >
               <ImageIcon className="w-4 h-4" />
@@ -188,8 +213,8 @@ export default function App() {
       {/* 📦 Main Body Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8">
         
-        {/* TAB 1: THE LAB */}
-        {activeTab === 'lab' && (
+        {/* EDITOR VIEW: WORKSHOP & LAB */}
+        {(activeTab === 'workshop' || activeTab === 'lab') && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
             {/* Left Column: Interactive Canvas Visualizer (7 cols) */}
@@ -208,27 +233,37 @@ export default function App() {
                 activeManualThickness={activeManualThickness}
                 studentName={studentName}
                 schoolInfo={schoolInfo}
+                // Lifted simulation states
+                isPlaying={isPlaying}
+                setIsPlaying={setIsPlaying}
+                simulationProgress={simulationProgress}
+                setSimulationProgress={setSimulationProgress}
+                simulationSpeed={simulationSpeed}
+                setSimulationSpeed={setSimulationSpeed}
               />
 
               {/* Mode switching panel underneath canvas */}
               <div className="bg-white border border-slate-200 rounded-3xl p-5 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
                 <div className="space-y-1">
                   <h4 className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
-                    <span>💡 모드 선택 도움말</span>
+                    <span>💡 모드 빠른 전환</span>
                   </h4>
                   <p className="text-[11px] text-slate-500 leading-relaxed">
-                    수동 가이드 단계를 밟아가거나, 자동으로 복잡하고 멋진 무늬를 보여주는 수학 규칙 시뮬레이터를 켜보세요!
+                    수동 가이드 단계를 밟아가며 실을 직접 감아보거나, 자동으로 복잡하고 멋진 무늬를 보여주는 수학 규칙 시뮬레이터를 켜보세요!
                   </p>
                 </div>
 
                 <div className="flex bg-slate-100 p-1 border border-slate-200 rounded-2xl w-full sm:w-auto">
                   <button
                     onClick={() => {
+                      setActiveTab('workshop');
                       setIsManualMode(true);
-                      setCurrentStep(3); // jump to manual wrap styling step
+                      if (shape === 'none') {
+                        setCurrentStep(0);
+                      }
                     }}
                     className={`flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-                      isManualMode 
+                      activeTab === 'workshop' 
                         ? 'bg-emerald-600 text-white shadow-sm' 
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
@@ -237,15 +272,16 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => {
+                      setActiveTab('lab');
                       setIsManualMode(false);
                     }}
                     className={`flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-                      !isManualMode 
-                        ? 'bg-indigo-600 text-white shadow-sm' 
+                      activeTab === 'lab' 
+                        ? 'bg-indigo-650 text-white shadow-sm' 
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    📐 수학 규칙 시뮬레이션
+                    📐 수학 규칙 실험실
                   </button>
                 </div>
               </div>
@@ -253,7 +289,7 @@ export default function App() {
 
             {/* Right Column: Steps Guide & Math Simulator Panel (5 cols) */}
             <div className="lg:col-span-5 flex flex-col gap-6 h-full">
-              {isManualMode ? (
+              {activeTab === 'workshop' ? (
                 <ManualStepGuide
                   currentStep={currentStep}
                   setCurrentStep={setCurrentStep}
@@ -271,9 +307,13 @@ export default function App() {
                   setActiveManualColor={setActiveManualColor}
                   activeManualThickness={activeManualThickness}
                   setActiveManualThickness={setActiveManualThickness}
+                  isIntegerOnlyMode={isIntegerOnlyMode}
+                  setIsIntegerOnlyMode={setIsIntegerOnlyMode}
                 />
               ) : (
                 <SimulationPanel
+                  shape={shape}
+                  divisionLine={divisionLine}
                   N={N}
                   rule1={rule1}
                   setRule1={setRule1}
@@ -284,6 +324,15 @@ export default function App() {
                   setDivisionLine={setDivisionLine}
                   setIsManualMode={setIsManualMode}
                   setManualLines={setManualLines}
+                  isIntegerOnlyMode={isIntegerOnlyMode}
+                  setIsIntegerOnlyMode={setIsIntegerOnlyMode}
+                  // Passed simulation controls
+                  isPlaying={isPlaying}
+                  setIsPlaying={setIsPlaying}
+                  simulationProgress={simulationProgress}
+                  setSimulationProgress={setSimulationProgress}
+                  simulationSpeed={simulationSpeed}
+                  setSimulationSpeed={setSimulationSpeed}
                 />
               )}
             </div>

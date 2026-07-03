@@ -20,6 +20,9 @@ export function generatePoints(
   width: number,
   height: number
 ): Point[] {
+  if (shape === 'none') {
+    return [];
+  }
   const points: Point[] = [];
   const cx = width / 2;
   const cy = height / 2;
@@ -41,7 +44,7 @@ export function generatePoints(
       points.push({
         x: cx + radius * Math.cos(angle),
         y: cy + radius * Math.sin(angle),
-        label: `${i}`,
+        label: `${i + 1}`,
         index: i,
         type: 'boundary'
       });
@@ -77,7 +80,7 @@ export function generatePoints(
       points.push({
         x: pos.x,
         y: pos.y,
-        label: `${i}`,
+        label: `${i + 1}`,
         index: i,
         type: 'boundary'
       });
@@ -266,30 +269,35 @@ export function evaluateRule(index: number, N: number, config: RuleConfig): numb
   
   let target = 0;
   
+  // Standard modulo wrapping for 1-based indices (1 to N)
+  const wrap1 = (val: number) => {
+    return ((Math.round(val) - 1) % N + N) % N + 1;
+  };
+
   switch (config.type) {
     case 'addition':
-      target = (index + config.constant) % N;
+      target = wrap1(index + config.constant);
       break;
     case 'multiplication':
-      target = (index * config.constant) % N;
+      target = wrap1(index * config.constant);
       break;
     case 'power':
-      target = Math.pow(index, config.power) % N;
+      target = wrap1(Math.pow(index, config.power));
       break;
     case 'custom':
       try {
         // Safe evaluation of custom formula using a basic sandbox
-        // We replace "i" or "x" with the index value, then evaluate.
+        // We replace "i" or "x" with the 1-based index value, then evaluate.
         const formula = config.customFormula
           .toLowerCase()
           .replace(/i/g, `${index}`)
           .replace(/x/g, `${index}`);
         
         // Basic sanitization: only allow digits, arithmetic symbols, spaces, parenthesis, and modulo
-        if (/^[0-9+\-*/%() \t\n]+$/.test(formula)) {
+        if (/^[0-9+\-*/%() \t\n.]+$/.test(formula)) {
           // eslint-disable-next-line no-eval
           const result = eval(formula);
-          target = Math.round(result) % N;
+          target = wrap1(result);
         } else {
           return null; // Invalid characters
         }
@@ -303,6 +311,5 @@ export function evaluateRule(index: number, N: number, config: RuleConfig): numb
   
   // Make sure target is positive and within range
   if (isNaN(target)) return null;
-  target = ((target % N) + N) % N;
   return target;
 }

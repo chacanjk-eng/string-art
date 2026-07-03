@@ -36,6 +36,8 @@ interface ManualStepGuideProps {
   setActiveManualColor: (color: string) => void;
   activeManualThickness: number;
   setActiveManualThickness: (thickness: number) => void;
+  isIntegerOnlyMode: boolean;
+  setIsIntegerOnlyMode: (val: boolean) => void;
 }
 
 export default function ManualStepGuide({
@@ -54,7 +56,9 @@ export default function ManualStepGuide({
   activeManualColor,
   setActiveManualColor,
   activeManualThickness,
-  setActiveManualThickness
+  setActiveManualThickness,
+  isIntegerOnlyMode,
+  setIsIntegerOnlyMode
 }: ManualStepGuideProps) {
 
   const steps = [
@@ -120,21 +124,35 @@ export default function ManualStepGuide({
           </span>
         </div>
 
-        {/* Step Progress Tracker */}
-        <div className="grid grid-cols-4 gap-1.5 mb-6">
+        {/* Step Progress Tracker (Interactive & Clickable!) */}
+        <div className="grid grid-cols-4 gap-2 mb-6">
           {steps.map((s, idx) => (
-            <div key={idx} className="flex flex-col gap-1.5">
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                setCurrentStep(idx);
+                if (idx === 3) {
+                  setIsManualMode(true);
+                }
+              }}
+              className="flex flex-col gap-1.5 text-left group focus:outline-none focus:ring-2 focus:ring-indigo-100 rounded-lg p-1 transition-all"
+            >
               <div 
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  idx <= currentStep ? 'bg-indigo-600' : 'bg-slate-100'
+                className={`h-2 w-full rounded-full transition-all duration-300 ${
+                  idx <= currentStep 
+                    ? 'bg-indigo-600 group-hover:bg-indigo-700' 
+                    : 'bg-slate-200 group-hover:bg-slate-300'
                 }`}
               />
-              <span className={`text-[10px] text-center hidden sm:inline ${
-                idx === currentStep ? 'text-indigo-600 font-extrabold' : 'text-slate-400'
+              <span className={`text-[10px] text-center w-full block transition-all ${
+                idx === currentStep 
+                  ? 'text-indigo-600 font-black scale-105' 
+                  : 'text-slate-400 group-hover:text-slate-600 font-bold'
               }`}>
-                {s.title}
+                {idx + 1}. {s.title.split(' ')[0]}
               </span>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -196,6 +214,63 @@ export default function ManualStepGuide({
                     {count}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Direct Input & Slider */}
+            <div className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+              <span className="text-[11px] text-slate-500 font-bold block">원하는 칸수(등분점) 슬라이더 또는 직접 입력:</span>
+              <div className="flex gap-3 items-center">
+                <input
+                  type="range"
+                  min="4"
+                  max="120"
+                  step="1"
+                  value={N}
+                  onChange={(e) => setN(parseInt(e.target.value) || 12)}
+                  className="flex-1 accent-indigo-600 h-1 bg-slate-200 rounded-lg cursor-pointer"
+                />
+                <input
+                  type={isIntegerOnlyMode ? "number" : "text"}
+                  value={N}
+                  onChange={(e) => {
+                    const valStr = e.target.value;
+                    if (valStr === '') return;
+                    if (isIntegerOnlyMode) {
+                      let val = parseInt(valStr);
+                      if (isNaN(val)) return;
+                      if (val < 4) val = 4;
+                      if (val > 120) val = 120;
+                      setN(val);
+                    } else {
+                      let val = Math.round(parseFloat(valStr));
+                      if (isNaN(val)) return;
+                      if (val < 4) val = 4;
+                      if (val > 120) val = 120;
+                      setN(val);
+                    }
+                  }}
+                  className="w-16 text-center text-xs font-mono font-bold bg-white border border-slate-250 py-1.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="36"
+                />
+              </div>
+
+              {/* Integer Only Mode Toggle */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
+                <span className="text-[10px] text-slate-500 font-bold">정수 전용 모드 (소수점 입력 제한)</span>
+                <button
+                  type="button"
+                  onClick={() => setIsIntegerOnlyMode(!isIntegerOnlyMode)}
+                  className={`w-9 h-5 rounded-full p-0.5 transition-all ${
+                    isIntegerOnlyMode ? 'bg-indigo-600' : 'bg-slate-200'
+                  }`}
+                >
+                  <div 
+                    className={`bg-white w-4 h-4 rounded-full shadow transition-all ${
+                      isIntegerOnlyMode ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
 

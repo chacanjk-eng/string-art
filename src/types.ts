@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type ShapeType = 'circle' | 'square' | 'triangle' | 'pentagon' | 'hexagon';
+export type ShapeType = 'none' | 'circle' | 'square' | 'triangle' | 'pentagon' | 'hexagon';
 
 export type DivisionLineType = 'none' | 'diagonal' | 'cross' | 'center';
 

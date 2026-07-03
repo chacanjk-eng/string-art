@@ -62,12 +62,15 @@ function PostThumbnail({ post }: { post: GalleryPost }) {
       ctx.strokeStyle = post.rule1.color;
       ctx.lineWidth = Math.max(0.6, (post.rule1.thickness || 1) * 0.4);
       for (let i = 0; i < post.pointsCount; i++) {
-        const target = evaluateRule(i, post.pointsCount, post.rule1);
-        if (target !== null && target < pts.length && i < pts.length) {
-          ctx.beginPath();
-          ctx.moveTo(pts[i].x, pts[i].y);
-          ctx.lineTo(pts[target].x, pts[target].y);
-          ctx.stroke();
+        const target1 = evaluateRule(i + 1, post.pointsCount, post.rule1);
+        if (target1 !== null) {
+          const target = target1 - 1;
+          if (target < pts.length && i < pts.length) {
+            ctx.beginPath();
+            ctx.moveTo(pts[i].x, pts[i].y);
+            ctx.lineTo(pts[target].x, pts[target].y);
+            ctx.stroke();
+          }
         }
       }
     }
@@ -77,12 +80,15 @@ function PostThumbnail({ post }: { post: GalleryPost }) {
       ctx.strokeStyle = post.rule2.color;
       ctx.lineWidth = Math.max(0.6, (post.rule2.thickness || 1) * 0.4);
       for (let i = 0; i < post.pointsCount; i++) {
-        const target = evaluateRule(i, post.pointsCount, post.rule2);
-        if (target !== null && target < pts.length && i < pts.length) {
-          ctx.beginPath();
-          ctx.moveTo(pts[i].x, pts[i].y);
-          ctx.lineTo(pts[target].x, pts[target].y);
-          ctx.stroke();
+        const target1 = evaluateRule(i + 1, post.pointsCount, post.rule2);
+        if (target1 !== null) {
+          const target = target1 - 1;
+          if (target < pts.length && i < pts.length) {
+            ctx.beginPath();
+            ctx.moveTo(pts[i].x, pts[i].y);
+            ctx.lineTo(pts[target].x, pts[target].y);
+            ctx.stroke();
+          }
         }
       }
     }
