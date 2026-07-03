@@ -1,0 +1,6 @@
+{
+  "name": "스트링아트 수학 실험실",
+  "description": "초등학교 5-6학년을 위한 수학 스트링아트 체험 및 자동 규칙 시뮬레이션 프로그램",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
